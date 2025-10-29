@@ -35,5 +35,32 @@
   }
 
  
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scroll-thumb) var(--scroll-track);
+  }
 
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: var(--scroll-track);
+    border-left: 1px solid var(--border);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--scroll-thumb);
+    border: 3px solid var(--scroll-track);
+    border-radius: 7px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--scroll-thumb-hover);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-corner {
+    background: var(--scroll-track);
+  }
 }
