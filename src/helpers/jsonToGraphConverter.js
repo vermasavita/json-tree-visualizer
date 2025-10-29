@@ -14,7 +14,8 @@ export class JSONToGraphConverter {
   formatPrimitiveContent = (primitives) => {
     return primitives
       .map(({ key, value }) => {
-        const formattedValue = typeof value === "string" ? `"${value}"` : String(value);
+        const formattedValue =
+          typeof value === "string" ? `"${value}"` : String(value);
         return `${key}: ${formattedValue}`;
       })
       .join("\n");
@@ -24,8 +25,13 @@ export class JSONToGraphConverter {
     id,
     type: "custom",
     position,
-    data,
-    draggable: true,
+    data: {
+      label: data.label,
+      backgroundColor: data.backgroundColor,
+      isContentNode: data.isContentNode,
+      path: data.path || "",
+      value: data.value
+    }
   });
 
   createEdge = (sourceId, targetId) => ({
@@ -35,8 +41,8 @@ export class JSONToGraphConverter {
     type: "default",
     style: {
       stroke: "#4B5563",
-      strokeWidth: 3,
-    },
+      strokeWidth: 3
+    }
   });
 
   getNodeConfig = (obj, key, parentId, primitives, nested) => {
@@ -47,7 +53,7 @@ export class JSONToGraphConverter {
       return {
         label: "root {}",
         backgroundColor: "bg-purple-500",
-        isContentNode: false,
+        isContentNode: false
       };
     }
 
@@ -55,7 +61,7 @@ export class JSONToGraphConverter {
       return {
         label: `${key} [${obj.length}]`,
         backgroundColor: "bg-green-500",
-        isContentNode: false,
+        isContentNode: false
       };
     }
 
@@ -63,7 +69,7 @@ export class JSONToGraphConverter {
       return {
         label: this.formatPrimitiveContent(primitives),
         backgroundColor: "bg-gray-700",
-        isContentNode: true,
+        isContentNode: true
       };
     }
 
@@ -71,18 +77,18 @@ export class JSONToGraphConverter {
     return {
       label: key ? `${key} {${keyCount}}` : `{${keyCount}}`,
       backgroundColor: "bg-blue-500",
-      isContentNode: false,
+      isContentNode: false
     };
   };
 
-  processObject = (obj, key, parentId, depth, yOffset) => {
+  processObject = (obj, key, parentId, depth, yOffset, parentPath = '$') => {
     const currentNodeId = this.generateId();
     const nodes = [];
     const edges = [];
-    
+
     const primitives = [];
     const nested = [];
-    
+
     Object.entries(obj).forEach(([childKey, value]) => {
       if (this.isPrimitive(value)) {
         primitives.push({ key: childKey, value });
@@ -92,23 +98,46 @@ export class JSONToGraphConverter {
     });
 
     const { label, backgroundColor, isContentNode } = this.getNodeConfig(
-      obj, key, parentId, primitives, nested
+      obj,
+      key,
+      parentId,
+      primitives,
+      nested
     );
 
+    let currentPath = parentPath;
+    if (key !== null) {
+      currentPath = Array.isArray(obj) 
+        ? `${parentPath}[${key}]`
+        : `${parentPath}.${key}`;
+    }
+
     const position = { x: depth * this.xSpacing, y: yOffset };
-    
-    nodes.push(this.createNode(currentNodeId, position, {
-      label,
-      backgroundColor,
-      isContentNode,
-    }));
+
+    nodes.push(
+      this.createNode(currentNodeId, position, {
+        label,
+        backgroundColor,
+        isContentNode,
+        path: currentPath,
+        value: isContentNode ? obj : undefined
+      })
+    );
 
     if (parentId) {
       edges.push(this.createEdge(parentId, currentNodeId));
     }
 
     if (!isContentNode) {
-      const childrenResult = this.processChildren(obj, currentNodeId, depth, yOffset, primitives, nested);
+      const childrenResult = this.processChildren(
+        obj,
+        currentNodeId,
+        depth,
+        yOffset,
+        primitives,
+        nested,
+        currentPath
+      );
       nodes.push(...childrenResult.nodes);
       edges.push(...childrenResult.edges);
     }
@@ -116,7 +145,7 @@ export class JSONToGraphConverter {
     return { currentNodeId, nodes, edges };
   };
 
-  processChildren = (obj, parentId, depth, yOffset, primitives, nested) => {
+  processChildren = (obj, parentId, depth, yOffset, primitives, nested, parentPath) => {
     const nodes = [];
     const edges = [];
     let children = [];
@@ -125,7 +154,7 @@ export class JSONToGraphConverter {
       children = obj.map((value, index) => ({
         key: index,
         value,
-        isNested: !this.isPrimitive(value),
+        isNested: !this.isPrimitive(value)
       }));
     } else {
       if (primitives.length > 0) {
@@ -149,14 +178,19 @@ export class JSONToGraphConverter {
           const primitiveNodeId = this.generateId();
           const primitiveLabel = this.formatPrimitiveContent(child.primitives);
 
-          nodes.push(this.createNode(primitiveNodeId, 
-            { x: (depth + 1) * this.xSpacing, y: childY }, 
-            {
-              label: primitiveLabel,
-              backgroundColor: "bg-orange-500",
-              isContentNode: true,
-            }
-          ));
+          nodes.push(
+            this.createNode(
+              primitiveNodeId,
+              { x: (depth + 1) * this.xSpacing, y: childY },
+              {
+                label: primitiveLabel,
+                backgroundColor: "bg-orange-500",
+                isContentNode: true,
+                path: parentPath, 
+                value: Object.fromEntries(child.primitives.map(p => [p.key, p.value]))
+              }
+            )
+          );
 
           edges.push(this.createEdge(parentId, primitiveNodeId));
         } else {
@@ -165,7 +199,8 @@ export class JSONToGraphConverter {
             child.key,
             parentId,
             depth + 1,
-            childY
+            childY,
+            parentPath
           );
           nodes.push(...childResult.nodes);
           edges.push(...childResult.edges);
@@ -177,8 +212,8 @@ export class JSONToGraphConverter {
   };
 
   convert = (data) => {
-    this.nodeId = 0; 
-    const result = this.processObject(data, null, null, 0, 0);
+    this.nodeId = 0;
+    const result = this.processObject(data, null, null, 0, 0, '$');
     return { nodes: result.nodes, edges: result.edges };
   };
 }
