@@ -1,3 +1,4 @@
+import JSONTreeVisualizer from "./components/JSONTreeVisualizer";
 import ThemeToggle from "./components/ThemeToggle";
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
       </header>
 
       <main className="flex-1 w-full overflow-hidden">
+        <JSONTreeVisualizer />
       </main>
     </div>
   );
